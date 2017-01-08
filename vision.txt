@@ -1,0 +1,50 @@
+Comments:
+  Must start at the beginning of a line.
+  Are denoted with an '@' symbol
+
+Every line can either be left blank, have a comment on it, or set a variable to
+ some value
+
+Types are determined by the value assigned.
+
+All whitespace is ignored
+
+All variables must be in the form:
+    varName = value
+
+Multiple variable names are not allowed.
+
+Valid types for values:
+  Integers: 0 - 9 (NOTE: all integers are treated as longs. If the value
+                   specified exceeds the maximum value of a long for that
+                   system, the value will overflow.)
+  Floats:  0 - 9 or 0.0-9 9.0-9 (The same rules for integers apply for floats)
+  Lists:  (SomeValue, ...) or [SomeValue, ...] (Lists can hold any number of
+                                                values, however they must all be
+                                                of the same type. If the type
+                                                cannot be determined, then the
+                                                type defaults to string).
+  Strings: "Some text"
+
+  If a value's type cannot be determined, then the type defaults to a string.
+
+Every variable = value line MUST have at least one space or tab character before 
+ and after the '=' sign.
+
+Example:
+
+@ This is a comment
+@ This line (and the line above it), are ignored.
+
+    path = "/var/logs"   <-- Type=string
+ number=  10             <-- Type=integer
+decimal  =9.35           <-- Type=float
+
+someList = [10,5,222,31]   <-- Type=List of integers
+
+badList = ["foo",10,232]   <-- Error
+
+unknown = hello world      <-- Type=string
+
+
+
