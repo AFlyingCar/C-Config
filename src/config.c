@@ -8,6 +8,7 @@
 #include "configType.h"
 #include "list.h"
 #include "value.h"
+#include "variable.h"
 
 #ifndef NULL
 #define NULL ((void*)0)
@@ -15,11 +16,13 @@
 
 #define MAX_CONFIG_LINE 256 /* TODO: Change this value. */
 #define MAX_VAR_LENGTH 128
+#define STARTING_VAR_NAME_MEM 128 /* The starting number of variables to
+                                     allocate. */
 
 struct _config_struct {
     const char* fileName;
-    const char** variables;
-    value* values;
+
+    variable* array;
 
     int size;
     int numVars;
@@ -33,20 +36,16 @@ value* getValue(struct _config_struct* cfg, const char* var) {
     int i;
 
     for(i = 0; i < cfg->numVars; i++) {
-        if(strcmp(cfg->variables[i], var) == 0) {
-            return &cfg->values[i];
+        if(strcmp(cfg->array[i].name, var) == 0) {
+            return &cfg->array[i].val;
         }
     }
 
     return NULL;
 }
 
-const char** getAllVariables(struct _config_struct* cfg) {
-    return cfg->variables;
-}
-
-value* getAllValues(struct _config_struct* cfg) {
-    return cfg->values;
+variable* getAllVariables(struct _config_struct* cfg) {
+    return cfg->array;
 }
 
 config_type determineType(const char* raw) {
@@ -162,7 +161,7 @@ list rawToList(const char* raw) {
 
 const char* rawToString(const char* raw) {
     char* newStr = (char*)malloc(strlen(raw) - 2);
-    return (const char*)strcpy(newStr, raw);
+    return (const char*)strncpy(newStr, raw + 1, strlen(raw) - 2);
 }
 
 /*
@@ -210,8 +209,14 @@ static value* parseValue(const char* rawValue) {
  *  success and non-zero upon failure.
  */
 static int expandCfgMemory(struct _config_struct* cfg) {
-    /* TODO: Finish this function. */
-    (void)(cfg);
+    int i;
+    int newSize = cfg->size * 2;
+    variable* newArray = (variable*)malloc(sizeof(variable) * newSize);
+
+    for(i = 0; i < cfg->numVars; i++) {
+        newArray[i] = cfg->array[i];
+    }
+
     return 0;
 }
 
@@ -231,13 +236,24 @@ struct _config_struct* parseFile(const char* filename) {
         return NULL;
     }
 
+    cfg->array = (variable*)malloc(sizeof(variable*) *
+                                          STARTING_VAR_NAME_MEM);
+    if(cfg->array == NULL) {
+        free(cfg);
+        fclose(file);
+        return NULL;
+    }
+
+    cfg->numVars = 0;
+    cfg->size = STARTING_VAR_NAME_MEM;
+
     while(fgets(line, MAX_CONFIG_LINE, file) != NULL) {
         char* c;
-        char varName[MAX_VAR_LENGTH];
-        char rawValue[MAX_VAR_LENGTH]; /*
-                                        * Every value can be this many chars as
-                                        * well.
-                                        */
+        char varName[MAX_VAR_LENGTH] = { 0 };
+        char rawValue[MAX_VAR_LENGTH] = { 0 }; /*
+                                                * Every value can be this many
+                                                * chars as well.
+                                                */
         int checkingVal = 0; /* are we currently checking the value or var? */
         int i;
         value* value;
@@ -252,11 +268,10 @@ struct _config_struct* parseFile(const char* filename) {
                 continue;
             } else if(*c == '=') {
                 checkingVal = 1;
-                c++;
             } else {
                 int i = 0;
                 /* Keep reading characters */
-                while(*c != ' ' || *c != '\t') {
+                while(*c != ' ' && *c != '\t') {
                     if(checkingVal) {
                         if(*c == '\n') {
                             break;
@@ -279,7 +294,7 @@ struct _config_struct* parseFile(const char* filename) {
                     c++; /* Make sure to keep incrementing c. */
                 }
 
-                c++; /* Increment c by 1 so that we skip the whitespace */
+                /*c++; *//* Increment c by 1 so that we skip the whitespace */
             }
         }
 
@@ -289,25 +304,45 @@ struct _config_struct* parseFile(const char* filename) {
          * Lets now try to figure out where to place the new variable and value.
          */
         for(i = 0; i < cfg->numVars; i++) {
-            if(strcmp(cfg->variables[i], varName) == 0) {
-                cfg->values[i] = *value;
+            if(strcmp(cfg->array[i].name, varName) == 0) {
+                cfg->array[i].val = *value; /* Only store a copy of the value, not
+                                               a pointer. This makes it easier to
+                                               free up memory later.
+                                              */
+                cfg->numVars++;
             }
         }
+
 
         if(i == cfg->numVars) {
             int oldNum = cfg->numVars;
 
-            /* Make sure we have enough memory still. */
-            if(expandCfgMemory(cfg)) {
-                fclose(file);
-                free(cfg);
+            if(cfg->numVars == cfg->size) {
+                /* Make sure we have enough memory still. */
+                if(expandCfgMemory(cfg)) {
+                    fclose(file);
+                    freeConfig(cfg);
+                    return NULL;
+                }
             }
 
-            cfg->variables[oldNum] = varName;
-            cfg->values[oldNum] = *value;
+            cfg->array[oldNum].name = varName;
+            cfg->array[oldNum].val = *value;
+            cfg->numVars++;
         }
+
+        free(value); /* We need to make sure we free the memory */
     }
 
     return cfg;
+}
+
+void freeConfig(struct _config_struct* cfg) {
+    if(cfg == NULL || cfg->array == NULL) {
+        return;
+    }
+
+    free(cfg->array);
+    free(cfg);
 }
 
