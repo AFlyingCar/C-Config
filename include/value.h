@@ -6,7 +6,7 @@
 
 union valUnion {
     const char* string;
-    long integer;
+    int integer;
     float decimal;
     list array;
 };
