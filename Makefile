@@ -1,7 +1,7 @@
 CC=gcc
 AR=ar
 
-CFLAGS=-Wall -Werror -Wextra -pedantic -ansi
+CFLAGS=-Wall -Werror -Wextra -pedantic -ansi -g
 
 INCLUDES=-I./include/
 SOURCES=config
@@ -20,5 +20,5 @@ link:
 
 clean:
 	rm build/*.o
-	rm bin/config.a
+	rm bin/libconfig.a
 
